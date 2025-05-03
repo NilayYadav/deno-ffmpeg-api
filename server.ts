@@ -165,4 +165,10 @@
 // console.log(`Server running on http://0.0.0.0:${port}`);
 // await serve(handler, { port: port, hostname: "0.0.0.0" });
 import { serve } from "https://deno.land/std/http/server.ts";
-await serve((req) => new Response("Hello World"), { port: 8000, hostname: "0.0.0.0" });
+
+console.log("Starting server...");
+await serve((req) => {
+    console.log("Received request:", req.method, req.url);
+    return new Response("Hello World");
+}, { port: 8000, hostname: "0.0.0.0" });
+console.log("Server is running on port 8000");
