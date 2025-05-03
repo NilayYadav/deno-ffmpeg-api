@@ -12,14 +12,28 @@ function generateRandomId() {
   return Math.random().toString(36).substring(2, 10); 
 }
 
+// Add CORS headers to all responses
+function addCorsHeaders(response: Response): Response {
+  const headers = new Headers(response.headers);
+  headers.set("Access-Control-Allow-Origin", "*");
+  headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  headers.set("Access-Control-Allow-Headers", "Content-Type");
+  
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 async function handleConvertRequest(req: Request): Promise<Response> {
   try {
     const { url } = await req.json();
     if (!url) {
-      return new Response(JSON.stringify({ error: "URL is required" }), {
+      return addCorsHeaders(new Response(JSON.stringify({ error: "URL is required" }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
-      });
+      }));
     }
 
     const fileId = generateRandomId(); 
@@ -48,7 +62,7 @@ async function handleConvertRequest(req: Request): Promise<Response> {
     const mp4Size = (await Deno.stat(mp4Path)).size;
     const mp3Size = (await Deno.stat(mp3Path)).size;
 
-    return new Response(
+    return addCorsHeaders(new Response(
       JSON.stringify({
         success: true,
         message: "Conversion successful",
@@ -68,16 +82,16 @@ async function handleConvertRequest(req: Request): Promise<Response> {
         status: 200,
         headers: { "Content-Type": "application/json" },
       }
-    );
+    ));
   } catch (error) {
     console.error("Error:", error);
-    return new Response(
+    return addCorsHeaders(new Response(
       JSON.stringify({ error: "Conversion failed", details: error.message }),
       {
         status: 500,
         headers: { "Content-Type": "application/json" },
       }
-    );
+    ));
   }
 }
 
@@ -91,29 +105,61 @@ async function handleDownloadRequest(req: Request): Promise<Response> {
     const headers = new Headers();
     headers.set("Content-Type", "audio/mpeg");
     headers.set("Content-Disposition", `attachment; filename="${filename}"`);
-    return new Response(file.readable, {
+    return addCorsHeaders(new Response(file.readable, {
       status: 200,
       headers,
-    });
+    }));
   } catch (error) {
-    return new Response(
+    return addCorsHeaders(new Response(
       JSON.stringify({ error: "File not found" }),
       { status: 404, headers: { "Content-Type": "application/json" } }
-    );
+    ));
   }
+}
+
+// Add a root endpoint for health checks
+function handleRootRequest(): Response {
+  return addCorsHeaders(new Response(
+    JSON.stringify({ 
+      status: "ok", 
+      message: "MP4 to MP3 Conversion API is running",
+      endpoints: {
+        "/": "Health check endpoint",
+        "/convert": "POST endpoint to convert MP4 to MP3. Expects JSON body with 'url' field",
+        "/download/:fileId.mp3": "GET endpoint to download converted MP3 file"
+      }
+    }),
+    { 
+      status: 200, 
+      headers: { "Content-Type": "application/json" } 
+    }
+  ));
+}
+
+// Handle OPTIONS requests for CORS preflight
+function handleOptionsRequest(): Response {
+  return addCorsHeaders(new Response(null, { status: 204 }));
 }
 
 async function handler(req: Request): Promise<Response> {
   const url = new URL(req.url);
-  if (url.pathname === "/convert" && req.method === "POST") {
+  console.log(`${req.method} ${url.pathname}`);
+  
+  // Handle CORS preflight requests
+  if (req.method === "OPTIONS") {
+    return handleOptionsRequest();
+  }
+  
+  if (url.pathname === "/" || url.pathname === "") {
+    return handleRootRequest();
+  } else if (url.pathname === "/convert" && req.method === "POST") {
     return handleConvertRequest(req);
   } else if (url.pathname.startsWith("/download/")) {
     return handleDownloadRequest(req);
   } else {
-    return new Response("Not Found", { status: 404 });
+    return addCorsHeaders(new Response("Not Found", { status: 404 }));
   }
 }
-
 
 const port = 8000;
 console.log(`Server running on http://0.0.0.0:${port}`);
