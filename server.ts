@@ -116,4 +116,4 @@ async function handler(req: Request): Promise<Response> {
 
 const port = 8000;
 console.log(`Server running on http://localhost:${port}`);
-await serve(handler, { port });
+await serve(handler, { hostname: "0.0.0.0", port });
