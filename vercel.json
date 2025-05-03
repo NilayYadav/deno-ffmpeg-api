@@ -1,13 +1,21 @@
 {
-    "functions": {
-      "api/**/*.ts": {
-        "runtime": "vercel-deno@2.0.0"
+    "version": 2,
+    "builds": [
+      {
+        "src": "server.ts",
+        "use": "vercel-deno@2.0.0"
       }
-    },
+    ],
     "routes": [
       {
         "src": "/(.*)",
-        "dest": "/api/server.ts"
+        "dest": "/server.ts"
       }
-    ]
+    ],
+    "buildCommand": "deno cache server.ts",
+    "outputDirectory": ".",
+    "devCommand": "deno run --allow-net --allow-read --allow-write --allow-run server.ts",
+    "projectSettings": {
+      "framework": null
+    }
   }
